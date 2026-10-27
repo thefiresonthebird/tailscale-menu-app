@@ -1,5 +1,6 @@
 # Tailscale Menu App
- TODO: short description
+ A lightweight Linux system tray indicator that shows your Tailscale connection
+ status at a glance, including which exit node you're using, if any.
 
  ## Installation
 

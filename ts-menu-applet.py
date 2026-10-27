@@ -6,6 +6,22 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import gi
+from gi.repository import GLib
+
+
+def drop_deprecation_warning(domain, level, message, *_args):
+    """libayatana-appindicator warns that it's deprecated in favour of
+    libayatana-appindicator-glib, but that library exports its menu over
+    org.gtk.Menus, which GNOME's AppIndicator extension can't display.
+    Silence only that warning; let anything else through."""
+    if "is deprecated" not in message:
+        GLib.log_default_handler(domain, level, message)
+
+
+# Must be installed before the library is loaded, which is when it warns
+GLib.log_set_handler(
+    "libayatana-appindicator", GLib.LogLevelFlags.LEVEL_WARNING, drop_deprecation_warning
+)
 
 gi.require_version("Gtk", "3.0")
 try:
@@ -15,7 +31,16 @@ try:
 except ValueError:
     gi.require_version("AppIndicator3", "0.1")
     from gi.repository import AppIndicator3 as AppIndicator
-from gi.repository import Gio, GLib, Gtk
+from gi.repository import Gio, Gtk
+
+try:
+    # GLib.unix_signal_add is deprecated in favour of GLibUnix (PyGObject >= 3.52)
+    gi.require_version("GLibUnix", "2.0")
+    from gi.repository import GLibUnix
+
+    unix_signal_add = GLibUnix.signal_add
+except (ValueError, ImportError):
+    unix_signal_add = GLib.unix_signal_add
 
 APP_ID = "tailscale-menu-applet"
 POLL_SECONDS = 5
@@ -274,7 +299,7 @@ def main():
     app = TailscaleIndicator()
     # Let Ctrl+C / SIGTERM stop the GTK main loop
     for sig in (signal.SIGINT, signal.SIGTERM):
-        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, sig, app.on_quit)
+        unix_signal_add(GLib.PRIORITY_DEFAULT, sig, app.on_quit)
     Gtk.main()
 
 
